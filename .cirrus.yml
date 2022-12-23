@@ -76,15 +76,16 @@ build_task:
       echo "Skipping archive, no updates required"
       exit
     fi  
-  
+    echo "Creating rootfs.tar from container..."
     podman export --output rootfs.tar fedora-update
     # GNu tar has a corruption bugs with --delete, so use bsdtar to filter instead
+    echo "Filtering rootfs.tar using container..."
     podman run -v .:/mnt --security-opt label=disable fedora sh -c 'dnf -y install bsdtar && bsdtar -cf /mnt/new.tar --exclude etc/resolv.conf @/mnt/rootfs.tar'
     mv new.tar rootfs.tar
     mkdir -p etc; touch etc/resolv.conf
     tar rf rootfs.tar --mode=644 --group=root --owner=root etc/resolv.conf
     echo "Compressing rootfs.tar.."
-    xz rootfs.tar
+    xz --verbose rootfs.tar
     echo "Done"
     ls -l rootfs.tar.xz
   release_script: |
