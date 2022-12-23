@@ -99,7 +99,6 @@ build_task:
     NEXT_RELEASE="v${IMAGE_TAG}.0.$((NEXT_RELEASE+1))"
     echo $NEXT_RELEASE > version
     set -o verbose
-    gh repo set-default
     gh release create $NEXT_RELEASE -d -F changes
     gh release upload $NEXT_RELEASE lastimage rootfs.tar.xz version
     gh release edit $NEXT_RELEASE --draft=false
