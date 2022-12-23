@@ -5,8 +5,7 @@ env:
   GH_TOKEN: ENCRYPTED[558ab3342d6dc01817f2cd5c808c1c84f084f8bc991125b8b309e78db686cdbf16e3784200f025ac8b7e8801222e6114]
 build_task:
   alias: 'build'
-  only_if: $CIRRUS_BRANCH == 'main' || $CIRRUS_CRON == 'hourly'
-  skip: $CIRRUS_PR != "" || $CIRRUS_TAG != ""
+  only_if: $CIRRUS_BRANCH == 'main' && $CIRRUS_PR == "" && $CIRRUS_TAG == ""
   execution_lock: podman-wsl-fedora-arm-serial
   auto_cancellation: true
   compute_engine_instance:
