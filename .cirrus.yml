@@ -90,6 +90,7 @@ build_task:
       exit
     fi  
     git fetch --tags
+    set +o pipefail
     NEXT_RELEASE=`git tag --list | grep v${IMAGE_TAG} | cut -f3 -d '.' | sort -n | tail -1`
     re='^[0-9]+$'
     if ! [[ $NEXT_RELEASE =~ $re ]] ; then
