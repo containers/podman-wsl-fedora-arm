@@ -6,7 +6,7 @@ env:
 build_task:
   alias: 'build'
   only_if: $CIRRUS_BRANCH == 'main' || $CIRRUS_CRON == 'hourly'
-  execution_lock: serial
+  execution_lock: podman-wsl-fedora-arm-serial
   auto_cancellation: true
   compute_engine_instance:
     image_project: rocky-linux-cloud
