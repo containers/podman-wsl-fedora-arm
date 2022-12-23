@@ -85,7 +85,6 @@ build_task:
     xz rootfs.tar
     ls -l rootfs.tar.xz
   release_script: |
-    set +o verbose
     if [ "$IMAGE_CHANGED" != "1" ] && [ "$PACKAGE_CHANGED" != "1" ]; then
       echo "Skipping release, no updates required"
       exit
