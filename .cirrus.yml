@@ -43,6 +43,7 @@ build_task:
     fi
     echo "Reusing cached image"
     curl -L $GITHUB_SERVER_URL/$CIRRUS_REPO_FULL_NAME/releases/latest/download/rootfs.tar.xz --output rootfs.tar.xz
+    echo "Extracting rootfs.."
     unxz rootfs.tar.xz
     podman import rootfs.tar fedora-update
     podman create --name fedora-update fedora-update sleep 7200
@@ -82,9 +83,12 @@ build_task:
     mv new.tar rootfs.tar
     mkdir -p etc; touch etc/resolv.conf
     tar rf rootfs.tar --mode=644 --group=root --owner=root etc/resolv.conf
+    echo "Compressing rootfs.tar.."
     xz rootfs.tar
+    echo "Done"
     ls -l rootfs.tar.xz
   release_script: |
+    set +o verbose
     if [ "$IMAGE_CHANGED" != "1" ] && [ "$PACKAGE_CHANGED" != "1" ]; then
       echo "Skipping release, no updates required"
       exit
@@ -98,6 +102,7 @@ build_task:
     fi
     NEXT_RELEASE="v${IMAGE_TAG}.0.$((NEXT_RELEASE+1))"
     echo $NEXT_RELEASE > version
+    echo "Releasing $NEXT_RELEASE"
     set -o verbose
     gh release create $NEXT_RELEASE -d -F changes
     gh release upload $NEXT_RELEASE lastimage rootfs.tar.xz version
