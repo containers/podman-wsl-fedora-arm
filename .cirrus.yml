@@ -1,0 +1,104 @@
+env:
+  IMAGE_TAG: 36
+  GITHUB_SERVER_URL: "https://github.com"
+  CIRRUS_SHELL: bash
+  GH_TOKEN: ENCRYPTED[558ab3342d6dc01817f2cd5c808c1c84f084f8bc991125b8b309e78db686cdbf16e3784200f025ac8b7e8801222e6114]
+build_task:
+  alias: 'build'
+  only_if: $CIRRUS_BRANCH == 'main' || $CIRRUS_CRON == 'hourly'
+  execution_lock: serial
+  auto_cancellation: true
+  compute_engine_instance:
+    image_project: rocky-linux-cloud
+    image: family/rocky-linux-9-arm64
+    platform: linux
+    architecture: arm64 
+    cpu: 2 
+    memory: 4G 
+    disk: 100 
+  setup_script: |
+    dnf install 'dnf-command(config-manager)'
+    dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
+    dnf -y install gh git podman
+  get_script: |
+    set +o verbose
+    date >> changes
+    podman image pull docker.io/library/fedora:$IMAGE_TAG
+    imageDigest=`podman image inspect docker.io/library/fedora:$IMAGE_TAG --format {{.Digest}}`
+    echo $imageDigest > lastimage
+    echo "Fetching $GITHUB_SERVER_URL/$CIRRUS_REPO_FULL_NAME/releases/latest/download/lastimage"
+    lastImage=`curl -L "$GITHUB_SERVER_URL/$CIRRUS_REPO_FULL_NAME/releases/latest/download/lastimage"`
+    echo "Digest: $imageDigest"
+    echo "Last: $lastImage"
+    if [ "$lastImage" != "$imageDigest" ]; then
+      echo "Image needs update"
+      echo -e "\nImage update:\n $imageDigest\n" >> changes
+      echo "IMAGE_CHANGED=1" >> $CIRRUS_ENV
+    fi
+  reuse_script: |
+    set +o verbose
+    if [ "$IMAGE_CHANGED" == "1" ]; then
+      echo "Skipped"
+      exit
+    fi
+    echo "Reusing cached image"
+    curl -L $GITHUB_SERVER_URL/$CIRRUS_REPO_FULL_NAME/releases/latest/download/rootfs.tar.xz --output rootfs.tar.xz
+    unxz rootfs.tar.xz
+    podman import rootfs.tar fedora-update
+    podman create --name fedora-update fedora-update sleep 7200
+  clean_script: |
+    set +o verbose
+    if [ "$IMAGE_CHANGED" != "1" ]; then
+      echo "Skipped"
+      exit
+    fi
+    echo "Using clean image"
+    podman create --name fedora-update docker.io/library/fedora:$IMAGE_TAG sleep 7200
+  update_script: | 
+    set +o verbose
+    podman start fedora-update
+    podman exec fedora-update sh -c 'rpm -qa --qf "%-30{name} %{version}-%{release}\n" | sort' > pre-update
+    podman exec fedora-update sh -c 'dnf update -y && dnf -y install podman podman-docker procps-ng openssh-server net-tools && dnf clean all && rm -rf /var/cache/yum'
+    podman exec fedora-update sh -c 'rpm -qa --qf "%-30{name} %{version}-%{release}\n" | sort' > post-update
+
+    diff -u pre-update post-update > delta || delta=1
+    if [ ! -z "$delta" ]; then
+      echo "Package changes!"
+      echo -e "\nInstalled packages:\n\`\`\`" >> changes
+      grep '^+' delta | grep -v '+++' | sed 's/^\+//g' >> changes
+      echo "\`\`\`" >> changes
+      echo "PACKAGE_CHANGED=1" >> $CIRRUS_ENV
+    fi
+  archive_script: |
+    set +o verbose
+    if [ "$IMAGE_CHANGED" != "1" ] && [ "$PACKAGE_CHANGED" != "1" ]; then
+      echo "Skipping archive, no updates required"
+      exit
+    fi  
+  
+    podman export --output rootfs.tar fedora-update
+    # GNu tar has a corruption bugs with --delete, so use bsdtar to filter instead
+    podman run -v .:/mnt --security-opt label=disable fedora sh -c 'dnf -y install bsdtar && bsdtar -cf /mnt/new.tar --exclude etc/resolv.conf @/mnt/rootfs.tar'
+    mv new.tar rootfs.tar
+    mkdir -p etc; touch etc/resolv.conf
+    tar rf rootfs.tar --mode=644 --group=root --owner=root etc/resolv.conf
+    xz rootfs.tar
+    ls -l rootfs.tar.xz
+  release_script: |
+    set +o verbose
+    if [ "$IMAGE_CHANGED" != "1" ] && [ "$PACKAGE_CHANGED" != "1" ]; then
+      echo "Skipping release, no updates required"
+      exit
+    fi  
+    git fetch --tags
+    NEXT_RELEASE=`git tag --list | grep v${IMAGE_TAG} | cut -f3 -d '.' | sort -n | tail -1`
+    re='^[0-9]+$'
+    if ! [[ $NEXT_RELEASE =~ $re ]] ; then
+      NEXT_RELEASE=0
+    fi
+    NEXT_RELEASE="v${IMAGE_TAG}.0.$((NEXT_RELEASE+1))"
+    echo $NEXT_RELEASE > version
+    set -o verbose
+    gh release create $NEXT_RELEASE -d -F changes
+    gh release upload $NEXT_RELEASE lastimage rootfs.tar.xz version
+    gh release edit $NEXT_RELEASE --draft=false
