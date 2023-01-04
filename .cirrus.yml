@@ -27,7 +27,7 @@ build_task:
     imageDigest=`podman image inspect docker.io/library/fedora:$IMAGE_TAG --format {{.Digest}}`
     echo $imageDigest > lastimage
     echo "Fetching $GITHUB_SERVER_URL/$CIRRUS_REPO_FULL_NAME/releases/latest/download/lastimage"
-    lastImage=`curl --retry 5 --retry-delay 8 -L "$GITHUB_SERVER_URL/$CIRRUS_REPO_FULL_NAME/releases/latest/download/lastimage"`
+    lastImage=`curl --retry 5 --retry-delay 8 --retry-all-errors -L "$GITHUB_SERVER_URL/$CIRRUS_REPO_FULL_NAME/releases/latest/download/lastimage"`
     echo "Digest: $imageDigest"
     echo "Last: $lastImage"
     if [ "$lastImage" != "$imageDigest" ]; then
@@ -42,7 +42,7 @@ build_task:
       exit
     fi
     echo "Reusing cached image"
-    curl --retry 5 --retry-delay 8 -L $GITHUB_SERVER_URL/$CIRRUS_REPO_FULL_NAME/releases/latest/download/rootfs.tar.xz --output rootfs.tar.xz
+    curl --retry 5 --retry-delay 8 --retry-all-errors -L $GITHUB_SERVER_URL/$CIRRUS_REPO_FULL_NAME/releases/latest/download/rootfs.tar.xz --output rootfs.tar.xz
     echo "Extracting rootfs.."
     unxz rootfs.tar.xz
     podman import rootfs.tar fedora-update
