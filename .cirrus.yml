@@ -106,6 +106,6 @@ build_task:
     echo $NEXT_RELEASE > version
     echo "Releasing $NEXT_RELEASE"
     set -o verbose
-    gh release create $NEXT_RELEASE -d -F changes
+    gh release create $NEXT_RELEASE -t $NEXT_RELEASE -d -F changes
     gh release upload $NEXT_RELEASE lastimage rootfs.tar.xz shasums version
     gh release edit $NEXT_RELEASE --draft=false
