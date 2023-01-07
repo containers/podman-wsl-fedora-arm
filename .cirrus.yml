@@ -86,7 +86,7 @@ build_task:
     tar rf rootfs.tar --mode=644 --group=root --owner=root etc/resolv.conf
     echo "Compressing rootfs.tar.."
     xz --verbose rootfs.tar
-    shasum -a 256 rootfs.tar.xz > shasums
+    sha256sum rootfs.tar.xz > shasums
     echo "Done"
     ls -l rootfs.tar.xz
   release_script: |
