@@ -3,19 +3,25 @@ env:
   GITHUB_SERVER_URL: "https://github.com"
   CIRRUS_SHELL: bash
   GH_TOKEN: ENCRYPTED[558ab3342d6dc01817f2cd5c808c1c84f084f8bc991125b8b309e78db686cdbf16e3784200f025ac8b7e8801222e6114]
+  IMAGE_SUFFIX: "c20230816t191118z-f38f37d13"
+  FEDORA_CACHE_IMAGE_NAME: "fedora-${IMAGE_SUFFIX}"
+
+gcp_credentials: ENCRYPTED[0b4f44167546c66c1a52d67588a90eafa328ee5c7a66aecd4b8f8d037fb957dd640e6e0f249acbc73284ac39beadc997]
+
 build_task:
   alias: 'build'
   only_if: $CIRRUS_BRANCH == 'main' && $CIRRUS_PR == "" && $CIRRUS_TAG == ""
   execution_lock: podman-wsl-fedora-arm-serial
   auto_cancellation: true
-  compute_engine_instance:
-    image_project: rocky-linux-cloud
-    image: family/rocky-linux-9-arm64
-    platform: linux
-    architecture: arm64 
-    cpu: 2 
-    memory: 4G 
-    disk: 100 
+  gce_instance: &standardvm
+    image_project: libpod-218412
+    zone: "us-central1-a"
+    cpu: 2
+    memory: "4Gb"
+    # Required to be 200gig, do not modify - has i/o performance impact
+    # according to gcloud CLI tool warning messages.
+    disk: 200
+    image_name: "${FEDORA_CACHE_IMAGE_NAME}"  # from stdenvars
   setup_script: |
     dnf install 'dnf-command(config-manager)'
     dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
