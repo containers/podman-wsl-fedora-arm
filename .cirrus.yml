@@ -16,6 +16,7 @@ build_task:
   gce_instance: &standardvm
     image_project: libpod-218412
     zone: "us-central1-a"
+    architecture: arm64
     cpu: 2
     memory: "4Gb"
     # Required to be 200gig, do not modify - has i/o performance impact
