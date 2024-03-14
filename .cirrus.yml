@@ -82,7 +82,7 @@ build_task:
     cd gvisor-tap-vsock
     git checkout v0.7.3
     HOME=/root make vm
-    podman cp bin/vm fedora-update:/usr/local/bin/vm  
+    podman cp bin/gvforwarder fedora-update:/usr/local/bin/vm  
     cd ..
   archive_script: |
     set +o verbose
