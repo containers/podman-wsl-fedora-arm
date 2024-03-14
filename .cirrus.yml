@@ -80,7 +80,7 @@ build_task:
     fi
     git clone https://github.com/containers/gvisor-tap-vsock
     cd gvisor-tap-vsock
-    git checkout v0.6.1
+    git checkout v0.7.3
     HOME=/root make vm
     podman cp bin/vm fedora-update:/usr/local/bin/vm  
     cd ..
